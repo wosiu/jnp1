@@ -3,6 +3,7 @@
 #include <sstream>
 #include <ctype.h>
 #include <tuple>
+#include <set>
 #include <stdlib.h>
 
 bool isNumber(std::string str){
@@ -128,19 +129,21 @@ std::tuple<int, int> parse_line(std::string line) throw(int){
 	auto train = std::make_tuple(time+delay, delay);
 }
 
-void parse(){
+std::set<tuple<int,int>> * parse(){
 	std::string str;
+	std::set<tuple<int,int>> * train_set = new std::set<tuple<int,int>>();
 	int current_line = 1;
 	while (!std::cin.eof()){
 		try {
 			std::getline(std::cin,str);
-			parse_line(str);
+			train_set->insert(parse_line(str));
 		}
 		catch (int error){
 			std::cerr << "Error " << current_line << ": " << str;
 		}
 		current_line ++;
 	}
+	return train_set;
 }
 
 int main(){
