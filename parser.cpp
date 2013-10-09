@@ -4,7 +4,33 @@
 #include <ctype.h>
 #include <tuple>
 #include <set>
+#include <vector>
 #include <stdlib.h>
+#define TRAINTYPE std::tuple<int,int>
+#define CMDTYPE std::tuple<char, int,int>
+
+/*
+ *	Kody bledow:
+ *
+ *	1 - EOF
+ *	2 - NaN
+ *	30 - Zly format
+ *	31 - Zla godzina
+ *	32 - Zla minuta
+ *	41 - zly dzien
+ *	42 - zly miesiac
+ *	43 - zly rok
+ *	50 - zle polecenie
+ *
+ */
+
+
+
+
+
+
+
+
 
 bool isNumber(std::string str){
 	bool res = true;
@@ -27,7 +53,7 @@ void checkDate(std::string str) throw(int){
 		if (isNumber(sday)) 
 			day = atoi(sday.c_str());
 		else
-			throw 1;
+			throw 2;
 	}
 	
 	{
@@ -36,7 +62,7 @@ void checkDate(std::string str) throw(int){
 		if (isNumber(smonth)) 
 			month = atoi(smonth.c_str());
 		else
-			throw 1;
+			throw 2;
 	}
 	
 	{
@@ -45,7 +71,7 @@ void checkDate(std::string str) throw(int){
 		if (isNumber(syear)) 
 			year = atoi(syear.c_str());
 		else
-			throw 1;
+			throw 2;
 	}
 	int maxday = 0;
 	if (month <= 7) {
@@ -66,8 +92,11 @@ void checkDate(std::string str) throw(int){
 		else
 			maxday = 28; 
 	}
-	if (((month > 12) || (month < 1)) || (day > maxday))
-		throw 1;
+
+	if ((month > 12) || (month < 1))
+		throw 42;
+	if (day > maxday)
+		throw 41;
 }
 
 // returns time from 00:00 to 'time' in minutes
@@ -79,23 +108,22 @@ int getTime(std::string time) throw(int){
 	std::string tmp;
 	ss << time;
 	std::getline(ss, tmp,'.');
-	if (!isNumber(tmp) || (tmp.length() != 2))
-		throw 1;
+	if (!isNumber(tmp) || (tmp.length() > 2))
+		throw 30;
 	h = atoi(tmp.c_str());
 	if (h >= 24 || h < 0)
-		throw 1;
+		throw 31;
 	
 	std::getline(ss, tmp,'.');
 	if (!isNumber(tmp) || (tmp.length() != 2))
-		throw 1;
+		throw 30;
 	m = atoi(tmp.c_str());
 	if (m >= 60 || m < 0)
-		throw 1;
+		throw 32;
 	return h*60 + m;
 }
 
-
-std::tuple<int, int> parse_line(std::string line) throw(int){
+TRAINTYPE parse_line(std::string line) throw(int){
 	std::stringstream ss;
 	ss << line;
 	
@@ -108,7 +136,7 @@ std::tuple<int, int> parse_line(std::string line) throw(int){
 		throw 1;
 	ss >> trainnumber;
 	if (!isNumber(trainnumber))	
-		throw 1;
+		throw 2;
 
 	if (ss.eof())
 		throw 1;
@@ -129,20 +157,66 @@ std::tuple<int, int> parse_line(std::string line) throw(int){
 	auto train = std::make_tuple(time+delay, delay);
 }
 
-std::set<tuple<int,int>> * parse(){
+CMDTYPE parse_command_line(std::string line) throw(int){
+	std::stringstream ss;
+	char cmd;
+	int timestart;
+	int timeend;
+	
+	ss << line;
+ 
+	ss >> cmd;
+
+	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S')))
+		throw 50;
+	
 	std::string str;
-	std::set<tuple<int,int>> * train_set = new std::set<tuple<int,int>>();
+	ss >> str;
+	timestart = getTime(str);
+	ss >> str;
+	timeend = getTime(str);
+
+	auto command = std::make_tuple(cmd, timestart, timeend);
+}
+
+std::set<std::tuple<int,int>> * parse(){
+	std::string str;
+	std::set < std::tuple <int,int> > * train_set = new std::set<std::tuple<int,int>>();
+	std::vector < std::tuple <char, int, int> > * command_vector = new std::vector<std::tuple<char,int,int>>();
 	int current_line = 1;
-	while (!std::cin.eof()){
-		try {
-			std::getline(std::cin,str);
-			train_set->insert(parse_line(str));
+	try {
+		while (!std::cin.eof()){
+			try {
+				std::getline(std::cin,str);
+				train_set->insert(parse_line(str));
+			}
+			catch (int error){
+				try { //jesli blad to sprawdzamy czy nie zaczely sie polecenia
+					command_vector->push_back(parse_command_line(str));
+					throw 100;
+				}
+				catch (int error){
+					if (error == 100) // jesli to bylo polecenie
+						throw 100;
+					std::cerr << error << " Error " << current_line << ": " << str << std::endl;
+				}
+			}
+			current_line ++;
 		}
-		catch (int error){
-			std::cerr << "Error " << current_line << ": " << str;
-		}
-		current_line ++;
 	}
+	catch (int error){
+		while (!std::cin.eof()){
+			try {
+				std::getline(std::cin, str);
+				command_vector->push_back(parse_command_line(str));			
+			}
+			catch (int error){
+				std::cerr << error << " Error " << current_line << ": " << str << std::endl;
+			}
+			current_line ++;
+		}
+	}
+
 	return train_set;
 }
 
