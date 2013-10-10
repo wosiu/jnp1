@@ -6,6 +6,7 @@
 #include <set>
 #include <vector>
 #include <stdlib.h>
+#include "parser.h"
 #define TRAINTYPE std::tuple<int,int>
 #define CMDTYPE std::tuple<char, int,int>
 
@@ -23,14 +24,6 @@
  *	50 - zle polecenie
  *
  */
-
-
-
-
-
-
-
-
 
 bool isNumber(std::string str){
 	bool res = true;
@@ -179,10 +172,10 @@ CMDTYPE parse_command_line(std::string line) throw(int){
 	auto command = std::make_tuple(cmd, timestart, timeend);
 }
 
-std::set<std::tuple<int,int>> * parse(){
+std::tuple<std::set<TRAINTYPE>* , std::vector<CMDTYPE>*> parse(){
 	std::string str;
-	std::set < std::tuple <int,int> > * train_set = new std::set<std::tuple<int,int>>();
-	std::vector < std::tuple <char, int, int> > * command_vector = new std::vector<std::tuple<char,int,int>>();
+	std::set < TRAINTYPE > * train_set = new std::set<std::tuple<int,int>>();
+	std::vector < CMDTYPE > * command_vector = new std::vector<std::tuple<char,int,int>>();
 	int current_line = 1;
 	try {
 		while (!std::cin.eof()){
@@ -217,7 +210,7 @@ std::set<std::tuple<int,int>> * parse(){
 		}
 	}
 
-	return train_set;
+	return std::make_tuple(train_set, command_vector);
 }
 
 int main(){
