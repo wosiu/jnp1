@@ -128,7 +128,7 @@ TRAINTYPE parse_line(std::string line) throw(int){
 	if (ss.eof())
 		throw 1;
 	ss >> trainnumber;
-	if (!isNumber(trainnumber))	
+	if (!isNumber(trainnumber) || trainnumber.length()>9)	
 		throw 2;
 
 	if (ss.eof())
