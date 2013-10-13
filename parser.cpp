@@ -1,3 +1,9 @@
+/*
+* JNP1 zad 1
+* Andrzej Sułecki, Michał Woś (mw336071)
+* grupa
+* g++ -std=cpp11 -lboost_date_time
+*/
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -8,6 +14,7 @@
 #include <stdlib.h>
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 typedef pair<int,int> traintype;
@@ -21,9 +28,7 @@ typedef tuple<char,int,int> cmdtype;
  *	30 - Zly format
  *	31 - Zla godzina
  *	32 - Zla minuta
- *	41 - zly dzien
- *	42 - zly miesiac
- *	43 - zly rok
+ *	40 - Zla data
  *	50 - zle polecenie
  *
  */
@@ -36,44 +41,21 @@ bool isNumber(string str){
 	return true;
 }
 
-void checkDate(string str) throw(int){
-	stringstream ss;
-	ss << str;
-	int day;
-	int month;
-	int year;
-	{
-		string sday;
-		getline(ss,sday,'.');
-		if (isNumber(sday))
-			day = atoi(sday.c_str());
-		else
-			throw 2;
+bool checkDate(string str) {
+	vector<string> parts;
+	boost::split( parts, str, boost::is_any_of(".") );
+	if ( parts.size() != 3 ) {
+		return false;
 	}
+	string formated = parts[2] + "/" + parts[1] + "/" + parts[0];
 
-	{
-		string smonth;
-		getline(ss,smonth,'.');
-		if (isNumber(smonth))
-			month = atoi(smonth.c_str());
-		else
-			throw 2;
+	try {
+		//boost::gregorian::date d( boost::gregorian::from_string( formated ) );
+		boost::gregorian::from_string( formated );
+	} catch(...) {
+		return false;
 	}
-
-	{
-		string syear;
-		getline(ss,syear,'.');
-		if (isNumber(syear))
-			year = atoi(syear.c_str());
-		else
-			throw 2;
-	}
-	try{
-		boost::gregorian::date d(year,month,day);
-	}
-	catch (out_of_range e){
-		throw 43;
-	}
+	return true;
 }
 
 // returns time from 00:00 to 'time' in minutes
@@ -106,21 +88,20 @@ traintype parse_line(string line) throw(int){
 	ss << line;
 
 	//TODO: sprawdzanie czy ten sam pociag nie powtarza sie na wejsciu w tym samym czasie?
-	string trainnumber;
-	string traindate;
-	string traintime;
-	string traindelay = "0";
+	string trainnumber, traindate, traintime, traindelay = "0";
 
 	if (ss.eof())
 		throw 1;
 	ss >> trainnumber;
-	if (!isNumber(trainnumber) || trainnumber.length()>9)
+	if ( !isNumber(trainnumber) )
 		throw 2;
 
 	if (ss.eof())
 		throw 1;
 	ss >> traindate;
-	checkDate(traindate);
+	if ( !checkDate(traindate) ) {
+		throw 40;
+	}
 
 	if (ss.eof())
 		throw 1;
