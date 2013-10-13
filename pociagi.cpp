@@ -102,7 +102,7 @@ traintype parse_line(string line) throw(int){
 		delay = strToInt( traindelay ); // throws 2
 	}
 
-	return traintype(time+delay, delay);
+	return traintype(time + delay, delay);
 }
 
 cmdtype parse_command_line(string line) throw(int){
@@ -119,9 +119,9 @@ cmdtype parse_command_line(string line) throw(int){
 	string str;
 	ss >> str;
 
-	timestart = getTime(str);
+	timestart = getTime(str); //throws 30
 	ss >> str;
-	timeend = getTime(str);
+	timeend = getTime(str); //throws 30
 
 	return make_tuple(cmd, timestart, timeend);
 }
