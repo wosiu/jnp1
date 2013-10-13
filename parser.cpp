@@ -1,7 +1,7 @@
 /*
 * JNP1 zad 1
-* Andrzej Sułecki, Michał Woś (mw336071)
-* grupa
+* Andrzej Sułecki (TODO), Michał Woś (mw336071)
+* grupa nr (TODO)
 * g++ -std=cpp11 -lboost_date_time -lboost_regex-mt
 */
 #include <iostream>
@@ -29,15 +29,17 @@ typedef tuple<char,int,int> cmdtype;
  *	30 - Zly czas
  *	40 - Zla data
  *	50 - zle polecenie
+ *	100 - TODO ?
  *
  */
 
-bool isNumber(string str){
+int strToInt(string str) throw(int){
 	try {
-		boost::lexical_cast<int>(str);
+		return boost::lexical_cast<int>(str);
 	}
-	catch(...) { return false; }
-	return true;
+	catch(...) {
+		throw 2;
+	}
 }
 
 bool checkDate(string str) {
@@ -67,7 +69,7 @@ int getTime(string time) throw(int){
 	int h,m;
 	sscanf (time.c_str(),"%d.%d",&h,&m);
 
-	return h*60 + m;
+	return h * 60 + m;
 }
 
 
@@ -78,29 +80,27 @@ traintype parse_line(string line) throw(int){
 	//TODO: sprawdzanie czy ten sam pociag nie powtarza sie na wejsciu w tym samym czasie?
 	string trainnumber, traindate, traintime, traindelay = "0";
 
-	if (ss.eof())
-		throw 1;
+	// numer pociagu
+	if (ss.eof()) { throw 1; }
 	ss >> trainnumber;
-	if ( !isNumber(trainnumber) )
-		throw 2;
+	strToInt(trainnumber); //throws 2
 
-	if (ss.eof())
-		throw 1;
+	// data
+	if (ss.eof()) { throw 1; }
 	ss >> traindate;
-	if ( !checkDate(traindate) ) {
-		throw 40;
-	}
+	if ( !checkDate(traindate) ) { throw 40; }
 
-	if (ss.eof())
-		throw 1;
-	if (!ss.eof())
-		ss >> traintime;
+	// planowany czas przejazdu
+	if (ss.eof()) { throw 1; }
+	ss >> traintime;
 	int time = getTime(traintime);
-	if (!ss.eof())
+
+	// opoznienie - opcjonalne
+	int delay = 0;
+	if (!ss.eof()) {
 		ss >> traindelay;
-	if (!isNumber(traindelay))
-		throw 1;
-	int delay = atoi(traindelay.c_str());
+		delay = strToInt( traindelay ); // throws 2
+	}
 
 	return traintype(time+delay, delay);
 }
@@ -114,8 +114,7 @@ cmdtype parse_command_line(string line) throw(int){
 	ss << line;
 	ss >> cmd;
 
-	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S')))
-		throw 50;
+	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S'))) { throw 50; }
 
 	string str;
 	ss >> str;
@@ -124,8 +123,7 @@ cmdtype parse_command_line(string line) throw(int){
 	ss >> str;
 	timeend = getTime(str);
 
-	auto command = make_tuple(cmd, timestart, timeend);
-	return command;
+	return make_tuple(cmd, timestart, timeend);
 }
 
 
@@ -193,7 +191,7 @@ int main(){
 		trains_per_time.insert( traintype( train.first, count++ ) );
 	}
 
-	//zakladam poprawnosc polecen
+	// zakladam poprawnosc polecen
 	for ( cmdtype cmd : cmds ) {
 		char code = get<0>(cmd);
 		int start = get<1>(cmd);
@@ -209,7 +207,7 @@ int main(){
 
 				end_it = trains_per_time.upper_bound( end );
 				if ( end_it == trains_per_time.end() ) {
-					end_it --;
+					end_it--;
 					res = 1;
 				}
 				res += (*end_it).second - (*train_it).second;
