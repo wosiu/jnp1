@@ -3,15 +3,15 @@
 
 //Pobiera z std wejscia opis pociagow i polecen
 //zwraca krotke:
-//	1 el - wskaznik do std::set zawierajacego opis pociagu
+//	1 el - wskaznik do std::multimap zawierajacego opis pociagu
 //	2 el - wskaznik do std::vector zawierajacego opis polecen
-//Opis pociagu - krotka:
+//Opis pociagu - para:
 //	1 el - faktyczny czas przyjazdu (oczekiwany + opoznienie)
 //	2 el - opoznienie
 //Opis polecenia - krotka:
 //	1 el - znak opisujacy polecenie
-//	2 el - czas w minutach
-//	3 el - czas w minutach
+//	2 el - czas w minutach od
+//	3 el - czas w minutach do
 
 std::tuple<std::set<std::tuple<int, int>>*, std::vector<std::tuple<char,int,int>>*> parse();
 
@@ -19,4 +19,4 @@ std::tuple<std::set<std::tuple<int, int>>*, std::vector<std::tuple<char,int,int>
 
 
 
-#endif 
+#endif

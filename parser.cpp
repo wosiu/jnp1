@@ -3,12 +3,14 @@
 #include <sstream>
 #include <ctype.h>
 #include <tuple>
-#include <set>
+#include <map>
 #include <vector>
 #include <stdlib.h>
-#include "parser.h"
-#define TRAINTYPE std::tuple<int,int>
-#define CMDTYPE std::tuple<char, int,int>
+#include <boost/lexical_cast.hpp>
+
+using namespace std;
+typedef pair<int,int> TRAINTYPE;
+typedef tuple<char,int,int> CMDTYPE;
 
 /*
  *	Kody bledow:
@@ -25,43 +27,42 @@
  *
  */
 
-bool isNumber(std::string str){
-	bool res = true;
-	for (std::string::const_iterator k = str.begin(); k != str.end(); ++k)
-		res = res && isdigit(*k);
-	return res;
+bool isNumber(string str){
+	try {
+		boost::lexical_cast<int>(str);
+	}
+	catch(...) { return false; }
+	return true;
 }
 
-
-
-void checkDate(std::string str) throw(int){
-	std::stringstream ss;
+void checkDate(string str) throw(int){
+	stringstream ss;
 	ss << str;
 	int day;
 	int month;
 	int year;
 	{
-		std::string sday;
-		std::getline(ss,sday,'.'); 
-		if (isNumber(sday)) 
+		string sday;
+		getline(ss,sday,'.');
+		if (isNumber(sday))
 			day = atoi(sday.c_str());
 		else
 			throw 2;
 	}
-	
+
 	{
-		std::string smonth;
-		std::getline(ss,smonth,'.'); 
-		if (isNumber(smonth)) 
+		string smonth;
+		getline(ss,smonth,'.');
+		if (isNumber(smonth))
 			month = atoi(smonth.c_str());
 		else
 			throw 2;
 	}
-	
+
 	{
-		std::string syear;
-		std::getline(ss,syear,'.');
-		if (isNumber(syear)) 
+		string syear;
+		getline(ss,syear,'.');
+		if (isNumber(syear))
 			year = atoi(syear.c_str());
 		else
 			throw 2;
@@ -83,7 +84,7 @@ void checkDate(std::string str) throw(int){
 		if (((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0))
 			maxday = 29;
 		else
-			maxday = 28; 
+			maxday = 28;
 	}
 
 	if ((month > 12) || (month < 1))
@@ -93,21 +94,21 @@ void checkDate(std::string str) throw(int){
 }
 
 // returns time from 00:00 to 'time' in minutes
-int getTime(std::string time) throw(int){
+int getTime(string time) throw(int){
 	int h;
 	int m;
-	
-	std::stringstream ss;
-	std::string tmp;
+
+	stringstream ss;
+	string tmp;
 	ss << time;
-	std::getline(ss, tmp,'.');
+	getline(ss, tmp,'.');
 	if (!isNumber(tmp) || (tmp.length() > 2))
 		throw 30;
 	h = atoi(tmp.c_str());
 	if (h >= 24 || h < 0)
 		throw 31;
-	
-	std::getline(ss, tmp,'.');
+
+	getline(ss, tmp,'.');
 	if (!isNumber(tmp) || (tmp.length() != 2))
 		throw 30;
 	m = atoi(tmp.c_str());
@@ -116,19 +117,19 @@ int getTime(std::string time) throw(int){
 	return h*60 + m;
 }
 
-TRAINTYPE parse_line(std::string line) throw(int){
-	std::stringstream ss;
+TRAINTYPE parse_line(string line) throw(int){
+	stringstream ss;
 	ss << line;
-	
-	std::string trainnumber; 
-	std::string traindate;
-	std::string traintime;
-	std::string traindelay = "0";
+	//TODO: sprawdzanie czy ten sam pociag nie powtarza sie na wejsciu w tym samym czasie?
+	string trainnumber;
+	string traindate;
+	string traintime;
+	string traindelay = "0";
 
 	if (ss.eof())
 		throw 1;
 	ss >> trainnumber;
-	if (!isNumber(trainnumber) || trainnumber.length()>9)	
+	if (!isNumber(trainnumber) || trainnumber.length()>9)
 		throw 2;
 
 	if (ss.eof())
@@ -146,73 +147,136 @@ TRAINTYPE parse_line(std::string line) throw(int){
 	if (!isNumber(traindelay))
 		throw 1;
 	int delay = atoi(traindelay.c_str());
-	
-	auto train = std::make_tuple(time+delay, delay);
+
+	return TRAINTYPE(time+delay, delay);
 }
 
-CMDTYPE parse_command_line(std::string line) throw(int){
-	std::stringstream ss;
+CMDTYPE parse_command_line(string line) throw(int){
+	stringstream ss;
 	char cmd;
 	int timestart;
 	int timeend;
-	
+
 	ss << line;
- 
+
 	ss >> cmd;
 
 	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S')))
 		throw 50;
-	
-	std::string str;
+
+	string str;
 	ss >> str;
+
 	timestart = getTime(str);
 	ss >> str;
 	timeend = getTime(str);
 
-	auto command = std::make_tuple(cmd, timestart, timeend);
+	auto command = make_tuple(cmd, timestart, timeend);
+	return command;
 }
 
-std::tuple<std::set<TRAINTYPE>* , std::vector<CMDTYPE>*> parse(){
-	std::string str;
-	std::set < TRAINTYPE > * train_set = new std::set<std::tuple<int,int>>();
-	std::vector < CMDTYPE > * command_vector = new std::vector<std::tuple<char,int,int>>();
+tuple< multimap<int,int>, vector<CMDTYPE> > parse(){
+	string str;
+	//pociagi - (key: czas oczekiwany + opoznienie) # (value: opoznienie)
+	multimap <int,int> train_map;
+	//polecenia - (znak polecenia, czas [min] od, czas [min] do)
+	vector <CMDTYPE> command_vector;
 	int current_line = 1;
 	try {
-		while (!std::cin.eof()){
+		while (!cin.eof()){
 			try {
-				std::getline(std::cin,str);
-				train_set->insert(parse_line(str));
+				getline(cin,str);
+				train_map.insert(parse_line(str));
 			}
 			catch (int error){
 				try { //jesli blad to sprawdzamy czy nie zaczely sie polecenia
-					command_vector->push_back(parse_command_line(str));
+					command_vector.push_back(parse_command_line(str));
 					throw 100;
 				}
-				catch (int error){
-					if (error == 100) // jesli to bylo polecenie
+				catch (int suberror){
+					if (suberror == 100) // jesli to bylo polecenie
 						throw 100;
-					std::cerr << error << " Error " << current_line << ": " << str << std::endl;
+					cerr << suberror << " Error " << current_line << ": " << str << endl;
 				}
 			}
 			current_line ++;
 		}
 	}
 	catch (int error){
-		while (!std::cin.eof()){
+		while (!cin.eof()){
 			try {
-				std::getline(std::cin, str);
-				command_vector->push_back(parse_command_line(str));			
+				getline(cin, str);
+				command_vector.push_back(parse_command_line(str));
 			}
-			catch (int error){
-				std::cerr << error << " Error " << current_line << ": " << str << std::endl;
+			catch (int suberror){
+				cerr << suberror << " Error " << current_line << ": " << str << endl;
 			}
 			current_line ++;
 		}
 	}
 
-	return std::make_tuple(train_set, command_vector);
+	return make_tuple(train_map, command_vector);
+}
+
+void test() {
+	auto line = parse_command_line("M 00.00 12.00");
+	cout << get<0>(line) << " " << get<1>(line) << " " << get<2>(line) << endl;
 }
 
 int main(){
-	parse();
+	// wczytanie, sprawdzenie danych
+	tuple <multimap<int,int>, vector<CMDTYPE>> input = parse();
+	multimap<int,int> trains = get<0>(input);
+	// (key: czas) # (value: ilosc pociagow do czasu wlacznie)
+	multimap<int,int> trains_per_time;
+	multimap<int,int>::iterator train_it,end_it;
+	vector<CMDTYPE> cmds = get<1>(input);
+
+	// zliczenie ilosci pociagow do danego czasu (potrzebne do polecenia 'L')
+	int count = 1;
+	for ( TRAINTYPE train : trains ) {
+		trains_per_time.insert( TRAINTYPE( train.first, count++ ) );
+	}
+
+	//zakladam poprawnosc polecen
+	for ( CMDTYPE cmd : cmds ) {
+		char code = get<0>(cmd);
+		int start = get<1>(cmd);
+		int end = get<2>(cmd);
+		int res = 0;
+
+		switch(code) {
+			case 'L' :
+				train_it = trains_per_time.lower_bound( start );
+				if ( train_it == trains_per_time.end() ) {
+					break;
+				}
+
+				end_it = trains_per_time.upper_bound( end );
+				if ( end_it == trains_per_time.end() ) {
+					end_it --;
+					res = 1;
+				}
+				res += (*end_it).second - (*train_it).second;
+			break;
+
+			case 'M' :
+				train_it = trains.lower_bound( start );
+				end_it = trains.upper_bound( end );
+				for ( ; train_it != end_it; train_it++ ) {
+					res = max( res, (*train_it).second );
+				}
+			break;
+
+			case 'S' :
+				train_it = trains.lower_bound( start );
+				end_it = trains.upper_bound( end );
+				for ( ; train_it != end_it; train_it++ ) {
+					res += (*train_it).second;
+				}
+			break;
+		}
+
+		printf("%d\n", res);
+	}
 }
