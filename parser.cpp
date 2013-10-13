@@ -7,10 +7,11 @@
 #include <vector>
 #include <stdlib.h>
 #include <boost/lexical_cast.hpp>
+#include <boost/date_time/gregorian/gregorian.hpp>
 
 using namespace std;
-typedef pair<int,int> TRAINTYPE;
-typedef tuple<char,int,int> CMDTYPE;
+typedef pair<int,int> traintype;
+typedef tuple<char,int,int> cmdtype;
 
 /*
  *	Kody bledow:
@@ -67,30 +68,12 @@ void checkDate(string str) throw(int){
 		else
 			throw 2;
 	}
-	int maxday = 0;
-	if (month <= 7) {
-		if (month % 2)
-			maxday = 30;
-		else
-			maxday = 31;
+	try{
+		boost::gregorian::date d(year,month,day);
 	}
-	else {
-		if (month % 2)
-			maxday = 31;
-		else
-			maxday = 30;
+	catch (out_of_range e){
+		throw 43;
 	}
-	if (month == 2){	//Uwzgledniamy przestepne
-		if (((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0))
-			maxday = 29;
-		else
-			maxday = 28;
-	}
-
-	if ((month > 12) || (month < 1))
-		throw 42;
-	if (day > maxday)
-		throw 41;
 }
 
 // returns time from 00:00 to 'time' in minutes
@@ -117,7 +100,8 @@ int getTime(string time) throw(int){
 	return h*60 + m;
 }
 
-TRAINTYPE parse_line(string line) throw(int){
+
+traintype parse_line(string line) throw(int){
 	stringstream ss;
 	ss << line;
 	//TODO: sprawdzanie czy ten sam pociag nie powtarza sie na wejsciu w tym samym czasie?
@@ -148,10 +132,10 @@ TRAINTYPE parse_line(string line) throw(int){
 		throw 1;
 	int delay = atoi(traindelay.c_str());
 
-	return TRAINTYPE(time+delay, delay);
+	return traintype(time+delay, delay);
 }
 
-CMDTYPE parse_command_line(string line) throw(int){
+cmdtype parse_command_line(string line) throw(int){
 	stringstream ss;
 	char cmd;
 	int timestart;
@@ -175,20 +159,23 @@ CMDTYPE parse_command_line(string line) throw(int){
 	return command;
 }
 
-tuple< multimap<int,int>, vector<CMDTYPE> > parse(){
+
+tuple< multimap<int,int>, vector<cmdtype> > parse(){
 	string str;
 	//pociagi - (key: czas oczekiwany + opoznienie) # (value: opoznienie)
 	multimap <int,int> train_map;
 	//polecenia - (znak polecenia, czas [min] od, czas [min] do)
-	vector <CMDTYPE> command_vector;
+	vector <cmdtype> command_vector;
+
 	int current_line = 1;
 	try {
 		while (!cin.eof()){
 			try {
+
 				getline(cin,str);
 				train_map.insert(parse_line(str));
 			}
-			catch (int error){
+			catch (int e){
 				try { //jesli blad to sprawdzamy czy nie zaczely sie polecenia
 					command_vector.push_back(parse_command_line(str));
 					throw 100;
@@ -196,7 +183,8 @@ tuple< multimap<int,int>, vector<CMDTYPE> > parse(){
 				catch (int suberror){
 					if (suberror == 100) // jesli to bylo polecenie
 						throw 100;
-					cerr << suberror << " Error " << current_line << ": " << str << endl;
+
+					cerr << e << " Error " << current_line << ": " << str << endl;
 				}
 			}
 			current_line ++;
@@ -204,6 +192,7 @@ tuple< multimap<int,int>, vector<CMDTYPE> > parse(){
 	}
 	catch (int error){
 		while (!cin.eof()){
+			current_line ++;
 			try {
 				getline(cin, str);
 				command_vector.push_back(parse_command_line(str));
@@ -211,7 +200,6 @@ tuple< multimap<int,int>, vector<CMDTYPE> > parse(){
 			catch (int suberror){
 				cerr << suberror << " Error " << current_line << ": " << str << endl;
 			}
-			current_line ++;
 		}
 	}
 
@@ -225,21 +213,21 @@ void test() {
 
 int main(){
 	// wczytanie, sprawdzenie danych
-	tuple <multimap<int,int>, vector<CMDTYPE>> input = parse();
+	tuple <multimap<int,int>, vector<cmdtype>> input = parse();
 	multimap<int,int> trains = get<0>(input);
 	// (key: czas) # (value: ilosc pociagow do czasu wlacznie)
 	multimap<int,int> trains_per_time;
 	multimap<int,int>::iterator train_it,end_it;
-	vector<CMDTYPE> cmds = get<1>(input);
+	vector<cmdtype> cmds = get<1>(input);
 
 	// zliczenie ilosci pociagow do danego czasu (potrzebne do polecenia 'L')
 	int count = 1;
-	for ( TRAINTYPE train : trains ) {
-		trains_per_time.insert( TRAINTYPE( train.first, count++ ) );
+	for ( traintype train : trains ) {
+		trains_per_time.insert( traintype( train.first, count++ ) );
 	}
 
 	//zakladam poprawnosc polecen
-	for ( CMDTYPE cmd : cmds ) {
+	for ( cmdtype cmd : cmds ) {
 		char code = get<0>(cmd);
 		int start = get<1>(cmd);
 		int end = get<2>(cmd);
