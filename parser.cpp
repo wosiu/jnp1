@@ -6,9 +6,14 @@
 #include <set>
 #include <vector>
 #include <stdlib.h>
+#include <boost/date_time/gregorian/gregorian.hpp>
 #include "parser.h"
-#define TRAINTYPE std::tuple<int,int>
-#define CMDTYPE std::tuple<char, int,int>
+//#define traintype std::tuple<int,int>
+//#define cmdtype std::tuple<char, int,int>
+//typedef std::tuple<int. int> traintype ;
+//typedef std::tuple<char, int, int> cmdtype ;
+
+
 
 /*
  *	Kody bledow:
@@ -66,7 +71,13 @@ void checkDate(std::string str) throw(int){
 		else
 			throw 2;
 	}
-	int maxday = 0;
+	try{
+		boost::gregorian::date d(year,month,day);
+	}
+	catch (std::out_of_range e){
+		throw 43;	
+	}
+	/*int maxday = 0;
 	if (month <= 7) {
 		if (month % 2)
 			maxday = 30;
@@ -89,7 +100,7 @@ void checkDate(std::string str) throw(int){
 	if ((month > 12) || (month < 1))
 		throw 42;
 	if (day > maxday)
-		throw 41;
+		throw 41;*/
 }
 
 // returns time from 00:00 to 'time' in minutes
@@ -116,7 +127,7 @@ int getTime(std::string time) throw(int){
 	return h*60 + m;
 }
 
-TRAINTYPE parse_line(std::string line) throw(int){
+traintype parse_line(std::string line) throw(int){
 	std::stringstream ss;
 	ss << line;
 	
@@ -150,14 +161,14 @@ TRAINTYPE parse_line(std::string line) throw(int){
 	auto train = std::make_tuple(time+delay, delay);
 }
 
-CMDTYPE parse_command_line(std::string line) throw(int){
+cmdtype parse_command_line(std::string line) throw(int){
 	std::stringstream ss;
 	char cmd;
 	int timestart;
 	int timeend;
 	
 	ss << line;
- 
+
 	ss >> cmd;
 
 	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S')))
@@ -172,26 +183,26 @@ CMDTYPE parse_command_line(std::string line) throw(int){
 	auto command = std::make_tuple(cmd, timestart, timeend);
 }
 
-std::tuple<std::set<TRAINTYPE>* , std::vector<CMDTYPE>*> parse(){
+std::tuple<std::set<traintype> , std::vector<cmdtype>> parse(){
 	std::string str;
-	std::set < TRAINTYPE > * train_set = new std::set<std::tuple<int,int>>();
-	std::vector < CMDTYPE > * command_vector = new std::vector<std::tuple<char,int,int>>();
+	std::set < traintype > train_set;
+	std::vector < cmdtype > command_vector;
 	int current_line = 1;
 	try {
 		while (!std::cin.eof()){
 			try {
 				std::getline(std::cin,str);
-				train_set->insert(parse_line(str));
+				train_set.insert(parse_line(str));
 			}
-			catch (int error){
+			catch (int e){
 				try { //jesli blad to sprawdzamy czy nie zaczely sie polecenia
-					command_vector->push_back(parse_command_line(str));
+					command_vector.push_back(parse_command_line(str));
 					throw 100;
 				}
 				catch (int error){
 					if (error == 100) // jesli to bylo polecenie
 						throw 100;
-					std::cerr << error << " Error " << current_line << ": " << str << std::endl;
+					std::cerr << e << " Error " << current_line << ": " << str << std::endl;
 				}
 			}
 			current_line ++;
@@ -199,14 +210,14 @@ std::tuple<std::set<TRAINTYPE>* , std::vector<CMDTYPE>*> parse(){
 	}
 	catch (int error){
 		while (!std::cin.eof()){
+			current_line ++;
 			try {
 				std::getline(std::cin, str);
-				command_vector->push_back(parse_command_line(str));			
+				command_vector.push_back(parse_command_line(str));			
 			}
 			catch (int error){
 				std::cerr << error << " Error " << current_line << ": " << str << std::endl;
 			}
-			current_line ++;
 		}
 	}
 
