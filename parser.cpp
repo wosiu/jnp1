@@ -104,6 +104,7 @@ int getTime(string time) throw(int){
 traintype parse_line(string line) throw(int){
 	stringstream ss;
 	ss << line;
+
 	//TODO: sprawdzanie czy ten sam pociag nie powtarza sie na wejsciu w tym samym czasie?
 	string trainnumber;
 	string traindate;
@@ -142,7 +143,6 @@ cmdtype parse_command_line(string line) throw(int){
 	int timeend;
 
 	ss << line;
-
 	ss >> cmd;
 
 	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S')))
@@ -169,10 +169,8 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 
 	int current_line = 1;
 	try {
-		while (!cin.eof()){
+		while ( getline(cin,str) ){
 			try {
-
-				getline(cin,str);
 				train_map.insert(parse_line(str));
 			}
 			catch (int e){
@@ -191,10 +189,10 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 		}
 	}
 	catch (int error){
-		while (!cin.eof()){
+		while ( getline(cin,str) ){
 			current_line ++;
 			try {
-				getline(cin, str);
+				//getline(cin, str);
 				command_vector.push_back(parse_command_line(str));
 			}
 			catch (int suberror){
