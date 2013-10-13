@@ -2,7 +2,7 @@
 * JNP1 zad 1
 * Andrzej Sułecki, Michał Woś (mw336071)
 * grupa
-* g++ -std=cpp11 -lboost_date_time
+* g++ -std=cpp11 -lboost_date_time -lboost_regex-mt
 */
 #include <iostream>
 #include <string>
@@ -15,6 +15,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/regex.hpp>
 
 using namespace std;
 typedef pair<int,int> traintype;
@@ -25,9 +26,7 @@ typedef tuple<char,int,int> cmdtype;
  *
  *	1 - EOF
  *	2 - NaN
- *	30 - Zly format
- *	31 - Zla godzina
- *	32 - Zla minuta
+ *	30 - Zly czas
  *	40 - Zla data
  *	50 - zle polecenie
  *
@@ -60,25 +59,14 @@ bool checkDate(string str) {
 
 // returns time from 00:00 to 'time' in minutes
 int getTime(string time) throw(int){
-	int h;
-	int m;
-
-	stringstream ss;
-	string tmp;
-	ss << time;
-	getline(ss, tmp,'.');
-	if (!isNumber(tmp) || (tmp.length() > 2))
+	static const boost::regex time_ex("^([0-9]|0[0-9]|1[0-9]|2[0-3]).[0-5][0-9]$");
+	if( !boost::regex_match(time, time_ex) ) {
 		throw 30;
-	h = atoi(tmp.c_str());
-	if (h >= 24 || h < 0)
-		throw 31;
+	}
 
-	getline(ss, tmp,'.');
-	if (!isNumber(tmp) || (tmp.length() != 2))
-		throw 30;
-	m = atoi(tmp.c_str());
-	if (m >= 60 || m < 0)
-		throw 32;
+	int h,m;
+	sscanf (time.c_str(),"%d.%d",&h,&m);
+
 	return h*60 + m;
 }
 
