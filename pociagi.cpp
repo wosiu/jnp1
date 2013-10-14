@@ -1,8 +1,8 @@
 /*
 * JNP1 zad 1
-* Andrzej Sułecki (TODO), Michał Woś (mw336071)
+* Andrzej Sułecki (as320426), Michał Woś (mw336071)
 * grupa nr (TODO)
-* g++ -std=cpp11 -lboost_date_time -lboost_regex-mt
+* g++ -std=c++11 -lboost_date_time -lboost_regex-mt
 */
 #include <iostream>
 #include <string>
@@ -28,7 +28,10 @@ const bool DEBUG_MODE = false;
  *	2 - NaN
  *	30 - Zly czas
  *	40 - Zla data
+ *	41 - ujemny delay
  *	50 - zle polecenie
+ *	51 - zle polecenie - czas startu po czasie konca
+ *	52 - brak czasu startu/konca
  *	100 - TODO ?
  *
  */
@@ -98,6 +101,7 @@ traintype parse_line(string line) throw(int){
 	if (!ss.eof()) {
 		ss >> traindelay;
 		delay = strToInt( traindelay ); // throws 2
+		if (delay < 0) { throw 41; }
 	}
 
 	return traintype(time + delay, delay);
@@ -115,12 +119,14 @@ cmdtype parse_command_line(string line) throw(int){
 	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S'))) { throw 50; }
 
 	string str;
+	if (ss.eof()) { throw 52; }
 	ss >> str;
-
 	timestart = getTime(str); //throws 30
+	if (ss.eof()) { throw 52; }
 	ss >> str;
 	timeend = getTime(str); //throws 30
-
+	if (timeend < timestart) { throw 51; }
+	if (!ss.eof()) { throw 50; }
 	return make_tuple(cmd, timestart, timeend);
 }
 
