@@ -20,7 +20,7 @@
 using namespace std;
 typedef pair<int,int> traintype;
 typedef tuple<char,int,int> cmdtype;
-
+const bool DEBUG_MODE = false;
 /*
  *	Kody bledow:
  *
@@ -61,14 +61,13 @@ bool checkDate(string str) {
 
 // returns time from 00:00 to 'time' in minutes
 int getTime(string time) throw(int){
-	static const boost::regex time_ex("^([0-9]|0[0-9]|1[0-9]|2[0-3]).[0-5][0-9]$");
+	static const boost::regex time_ex("^([0-9]|0[0-9]|1[0-9]|2[0-3])\\.[0-5][0-9]$");
 	if( !boost::regex_match(time, time_ex) ) {
 		throw 30;
 	}
 
 	int h,m;
-	sscanf (time.c_str(),"%d.%d",&h,&m);
-
+	sscanf (time.c_str(),"%d\.%d",&h,&m);
 	return h * 60 + m;
 }
 
@@ -77,7 +76,6 @@ traintype parse_line(string line) throw(int){
 	stringstream ss;
 	ss << line;
 
-	//TODO: sprawdzanie czy ten sam pociag nie powtarza sie na wejsciu w tym samym czasie?
 	string trainnumber, traindate, traintime, traindelay = "0";
 
 	// numer pociagu
@@ -149,7 +147,8 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 					if (suberror == 100) // jesli to bylo polecenie
 						throw 100;
 
-					cerr << e << " Error " << current_line << ": " << str << endl;
+					if( DEBUG_MODE ) cerr << e << " ";
+					cerr << "Error " << current_line << ": " << str << "\n";
 				}
 			}
 			current_line ++;
@@ -163,17 +162,13 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 				command_vector.push_back(parse_command_line(str));
 			}
 			catch (int suberror){
-				cerr << suberror << " Error " << current_line << ": " << str << endl;
+				if( DEBUG_MODE ) cerr << suberror << " ";
+				cerr << "Error " << current_line << ": " << str << "\n";
 			}
 		}
 	}
 
 	return make_tuple(train_map, command_vector);
-}
-
-void test() {
-	auto line = parse_command_line("M 00.00 12.00");
-	cout << get<0>(line) << " " << get<1>(line) << " " << get<2>(line) << endl;
 }
 
 int main(){
@@ -197,6 +192,8 @@ int main(){
 		int start = get<1>(cmd);
 		int end = get<2>(cmd);
 		int res = 0;
+
+		if ( DEBUG_MODE ) cout << code << " " << start << " " << end << endl;
 
 		switch(code) {
 			case 'L' :
