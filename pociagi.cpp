@@ -21,6 +21,7 @@ using namespace std;
 typedef pair<int,int> traintype;
 typedef tuple<char,int,int> cmdtype;
 const bool DEBUG_MODE = false;
+const int DOBA = 1440;
 /*
  *	Kody bledow:
  *
@@ -108,6 +109,7 @@ traintype parse_line(string line){
 		if (ss >> traindelay ) //zwraca true jesli napotkal gdzies nie biale znaki
 			return traintype(-1, -1);
 	}
+
 	return traintype(time + delay, delay);
 }
 
@@ -125,7 +127,7 @@ cmdtype parse_command_line(string line){
 	string str;
 	if (ss.eof()) { return cmdtype('E', -1, -1); }
 	ss >> str;
-	timestart = getTime(str); 
+	timestart = getTime(str);
 	if (timestart == -1) { return cmdtype('E', -1, -1); }
 	if (ss.eof()) { return cmdtype('E', -1, -1); }
 	string str2;
@@ -170,7 +172,12 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 				}
 			}
 		}
-		else {
+
+		// W zwiazku z zalozeniem, ze czas poczatkowy zapytania <= czas koncowy,
+		// zauwazamy, ze jesli opoznienie spowoduje przejazd przez stacje kolejnego dnia
+		// (tzn o lub po godzini 0:00, przy czym planowany przejazd byl przed),
+		// to nigdy nie pojawi sie zapytanie o taki pociag
+		else if ( get<0>( tmptrain ) < DOBA ) {
 			train_map.insert(tmptrain);
 		}
 		current_line ++;
