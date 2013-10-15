@@ -36,12 +36,12 @@ const bool DEBUG_MODE = false;
  *
  */
 
-int strToInt(string str) throw(int){
+int strToInt(string str){
 	try {
 		return boost::lexical_cast<int>(str);
 	}
 	catch(...) {
-		throw 2;
+		return -1;
 	}
 }
 
@@ -51,6 +51,8 @@ bool checkDate(string str) {
 	if ( parts.size() != 3 ) {
 		return false;
 	}
+	if (parts[0].length() > 2 || parts[1].length() > 2)
+		return false;
 	string formated = parts[2] + "/" + parts[1] + "/" + parts[0];
 
 	try {
@@ -63,51 +65,53 @@ bool checkDate(string str) {
 }
 
 // returns time from 00:00 to 'time' in minutes
-int getTime(string time) throw(int){
+int getTime(string time){
 	static const boost::regex time_ex("^([0-9]|0[0-9]|1[0-9]|2[0-3])\\.[0-5][0-9]$");
 	if( !boost::regex_match(time, time_ex) ) {
-		throw 30;
+		return -1;
 	}
-
 	int h,m;
 	sscanf (time.c_str(),"%d\.%d",&h,&m);
 	return h * 60 + m;
 }
 
 
-traintype parse_line(string line) throw(int){
+traintype parse_line(string line){
 	stringstream ss;
 	ss << line;
 
 	string trainnumber, traindate, traintime, traindelay = "0";
 
 	// numer pociagu
-	if (ss.eof()) { throw 1; }
+	if (ss.eof()) { return traintype(-1, -1); }
 	ss >> trainnumber;
-	strToInt(trainnumber); //throws 2
-
+	if (strToInt(trainnumber) == -1) { return traintype(-1, -1); }
 	// data
-	if (ss.eof()) { throw 1; }
+	if (ss.eof()) { return traintype(-1, -1); }
 	ss >> traindate;
-	if ( !checkDate(traindate) ) { throw 40; }
+	if ( !checkDate(traindate) ) { return traintype(-1, -1); }
 
 	// planowany czas przejazdu
-	if (ss.eof()) { throw 1; }
+	if (ss.eof()) { return traintype(-1, -1); }
 	ss >> traintime;
 	int time = getTime(traintime);
-
+	if (time == -1) { return traintype(-1, -1); }
 	// opoznienie - opcjonalne
 	int delay = 0;
 	if (!ss.eof()) {
-		ss >> traindelay;
-		delay = strToInt( traindelay ); // throws 2
-		if (delay < 0) { throw 41; }
+		if (ss >> traindelay) {
+			delay = strToInt( traindelay );
+			if (delay < 0) { return traintype(-1, -1); }
+		}
 	}
-
+	if (!ss.eof()) {
+		if (ss >> traindelay ) //zwraca true jesli napotkal gdzies nie biale znaki
+			return traintype(-1, -1);
+	}
 	return traintype(time + delay, delay);
 }
 
-cmdtype parse_command_line(string line) throw(int){
+cmdtype parse_command_line(string line){
 	stringstream ss;
 	char cmd;
 	int timestart;
@@ -116,20 +120,22 @@ cmdtype parse_command_line(string line) throw(int){
 	ss << line;
 	ss >> cmd;
 
-	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S'))) { throw 50; }
+	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S'))) { return cmdtype('E', -1, -1); }
 
 	string str;
-	if (ss.eof()) { throw 52; }
+	if (ss.eof()) { return cmdtype('E', -1, -1); }
 	ss >> str;
-	timestart = getTime(str); //throws 30
-	if (ss.eof()) { throw 52; }
+	timestart = getTime(str); 
+	if (timestart == -1) { return cmdtype('E', -1, -1); }
+	if (ss.eof()) { return cmdtype('E', -1, -1); }
 	string str2;
 	ss >> str2;
-	timeend = getTime(str2); //throws 30
-	if (timeend < timestart) { throw 51; }
+	timeend = getTime(str2);
+	if (timeend == -1) { return cmdtype('E', -1, -1); }
+	if (timeend < timestart) { return cmdtype('E', -1, -1); }
 	if (!ss.eof()) {
 		if (ss >> str2) //zwraca true jesli napotkal gdzies nie biale znaki
-			throw 53;
+			return cmdtype('E', -1, -1);
 	}
 	return make_tuple(cmd, timestart, timeend);
 }
@@ -143,41 +149,31 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 	vector <cmdtype> command_vector;
 
 	int current_line = 1;
-	try {
-		while ( getline(cin,str) ){
-			try {
-				train_map.insert(parse_line(str));
-			}
-			catch (int e){
-				try { //jesli blad to sprawdzamy czy nie zaczely sie polecenia
-					command_vector.push_back(parse_command_line(str));
-					throw 100;
-				}
-				catch (int suberror){
 
-					if (suberror == 100) // jesli to bylo polecenie
-						throw 100;
-					else
-						if( DEBUG_MODE ) cerr << "suberror: " << suberror << " ";
-					if( DEBUG_MODE ) cerr << e << " ";
-					cerr << "Error " << current_line << ": " << str << "\n";
-				}
-			}
-			current_line ++;
-		}
-	}
-	catch (int error){
-		while ( getline(cin,str) ){
-			current_line ++;
-			try {
-				//getline(cin, str);
-				command_vector.push_back(parse_command_line(str));
-			}
-			catch (int suberror){
-				if( DEBUG_MODE ) cerr << suberror << " ";
+
+	while ( getline(cin,str) ){
+		traintype tmptrain = parse_line(str);
+		if (tmptrain == traintype(-1, -1)){
+			cmdtype tmpcmd = parse_command_line(str);
+			if (tmpcmd == cmdtype('E', -1, -1)) {
 				cerr << "Error " << current_line << ": " << str << "\n";
 			}
+			else {
+				command_vector.push_back(tmpcmd);
+				while ( getline(cin,str) ){
+					current_line ++;
+					cmdtype tmp = parse_command_line(str);
+					if (tmp == cmdtype('E', -1, -1))
+						cerr << "Error " << current_line << ": " << str << "\n";
+					else
+						command_vector.push_back(tmp);
+				}
+			}
 		}
+		else {
+			train_map.insert(tmptrain);
+		}
+		current_line ++;
 	}
 
 	return make_tuple(train_map, command_vector);
