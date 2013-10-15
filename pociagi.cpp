@@ -127,8 +127,8 @@ cmdtype parse_command_line(string line) throw(int){
 	ss >> str2;
 	timeend = getTime(str2); //throws 30
 	if (timeend < timestart) { throw 51; }
-	if (!ss.eof()) { 
-		if (ss >> str2)
+	if (!ss.eof()) {
+		if (ss >> str2) //zwraca true jesli napotkal gdzies nie biale znaki
 			throw 53;
 	}
 	return make_tuple(cmd, timestart, timeend);
@@ -154,7 +154,7 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 					throw 100;
 				}
 				catch (int suberror){
-					
+
 					if (suberror == 100) // jesli to bylo polecenie
 						throw 100;
 					else
