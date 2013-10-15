@@ -20,7 +20,7 @@
 using namespace std;
 typedef pair<int,int> traintype;
 typedef tuple<char,int,int> cmdtype;
-const bool DEBUG_MODE = false;
+const bool DEBUG_MODE = true;
 /*
  *	Kody bledow:
  *
@@ -123,11 +123,14 @@ cmdtype parse_command_line(string line) throw(int){
 	ss >> str;
 	timestart = getTime(str); //throws 30
 	if (ss.eof()) { throw 52; }
-	str = "";
-	ss >> str;
-	timeend = getTime(str); //throws 30
+	string str2;
+	ss >> str2;
+	timeend = getTime(str2); //throws 30
 	if (timeend < timestart) { throw 51; }
-	if (!ss.eof()) { throw 50; }
+	if (!ss.eof()) { 
+		if (ss >> str2)
+			throw 53;
+	}
 	return make_tuple(cmd, timestart, timeend);
 }
 
@@ -151,9 +154,11 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 					throw 100;
 				}
 				catch (int suberror){
+					
 					if (suberror == 100) // jesli to bylo polecenie
 						throw 100;
-
+					else
+						if( DEBUG_MODE ) cerr << "suberror: " << suberror << " ";
 					if( DEBUG_MODE ) cerr << e << " ";
 					cerr << "Error " << current_line << ": " << str << "\n";
 				}
