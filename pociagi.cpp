@@ -2,7 +2,7 @@
 * JNP1 zad 1
 * Andrzej Sułecki (as320426), Michał Woś (mw336071)
 * grupa nr (TODO)
-* g++ -std=c++11 -lboost_date_time -lboost_regex-mt
+* g++ -std=c++11 -lboost_date_time -lboost_regex
 */
 #include <iostream>
 #include <string>
