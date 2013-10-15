@@ -123,6 +123,7 @@ cmdtype parse_command_line(string line) throw(int){
 	ss >> str;
 	timestart = getTime(str); //throws 30
 	if (ss.eof()) { throw 52; }
+	str = "";
 	ss >> str;
 	timeend = getTime(str); //throws 30
 	if (timeend < timestart) { throw 51; }
