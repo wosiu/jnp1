@@ -155,9 +155,12 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 
 	while ( getline(cin,str) ){
 		traintype tmptrain = parse_line(str);
+
+		if ( DEBUG_MODE ) { cout << tmptrain.first << endl; }
+
 		if (tmptrain == traintype(-1, -1)){
 			cmdtype tmpcmd = parse_command_line(str);
-			if (tmpcmd == cmdtype('E', -1, -1)) {
+			if (tmpcmd == cmdtype('E', -1, -1)){
 				cerr << "Error " << current_line << ": " << str << "\n";
 			}
 			else {
@@ -170,6 +173,7 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 					else
 						command_vector.push_back(tmp);
 				}
+				break;
 			}
 		}
 
