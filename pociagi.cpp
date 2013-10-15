@@ -20,7 +20,7 @@
 using namespace std;
 typedef pair<int,int> traintype;
 typedef tuple<char,int,int> cmdtype;
-const bool DEBUG_MODE = true;
+const bool DEBUG_MODE = false;
 /*
  *	Kody bledow:
  *
