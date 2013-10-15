@@ -206,7 +206,7 @@ int main(){
 		char code = get<0>(cmd);
 		int start = get<1>(cmd);
 		int end = get<2>(cmd);
-		int res = 0;
+		unsigned long long res = 0;
 
 		if ( DEBUG_MODE ) cout << code << " " << start << " " << end << endl;
 
@@ -220,7 +220,7 @@ int main(){
 				end_it = trains_per_time.upper_bound( end );
 				if ( end_it == trains_per_time.end() ) {
 					end_it--;
-					res = 1;
+					res = 1ULL;
 				}
 				res += (*end_it).second - (*train_it).second;
 			break;
@@ -229,7 +229,7 @@ int main(){
 				train_it = trains.lower_bound( start );
 				end_it = trains.upper_bound( end );
 				for ( ; train_it != end_it; train_it++ ) {
-					res = max( res, (*train_it).second );
+					res = max( res, (unsigned long long)(*train_it).second );
 				}
 			break;
 
@@ -242,6 +242,6 @@ int main(){
 			break;
 		}
 
-		printf("%d\n", res);
+		printf("%llu\n", res);
 	}
 }
