@@ -21,7 +21,10 @@ using namespace std;
 typedef pair<int,int> traintype;
 typedef tuple<char,int,int> cmdtype;
 const bool DEBUG_MODE = false;
-const int DOBA = 1440;
+const int LINES_MAX_NO = 3e7;
+//const int MAX_DELEY =
+//TODO: podac ograniczenie na maksymalne opoznienie (sizeof int - DOBA w min)
+
 /*
  *	Kody bledow:
  *
@@ -76,7 +79,7 @@ int getTime(string time){
 	return h * 60 + m;
 }
 
-
+// parsowanie wiersza z potencjalnym opisem pociagu
 traintype parse_line(string line){
 	stringstream ss;
 	ss << line;
@@ -86,6 +89,11 @@ traintype parse_line(string line){
 	// numer pociagu
 	if (ss.eof()) { return traintype(-1, -1); }
 	ss >> trainnumber;
+	// jesli numer pociagu nie jest 'kilkucyfrowy'
+	if ( 3 > trainnumber.size() || trainnumber.size() > 9 ) {
+		return traintype(-1, -1);
+	}
+
 	if (strToInt(trainnumber) == -1) { return traintype(-1, -1); }
 	// data
 	if (ss.eof()) { return traintype(-1, -1); }
@@ -150,7 +158,7 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 	//polecenia - (znak polecenia, czas [min] od, czas [min] do)
 	vector <cmdtype> command_vector;
 
-	int current_line = 1;
+	int current_line = 1, stored_lines = 0;
 
 
 	while ( getline(cin,str) ){
@@ -160,7 +168,7 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 
 		if (tmptrain == traintype(-1, -1)){
 			cmdtype tmpcmd = parse_command_line(str);
-			if (tmpcmd == cmdtype('E', -1, -1)){
+			if (tmpcmd == cmdtype('E', -1, -1) || stored_lines > LINES_MAX_NO ){
 				cerr << "Error " << current_line << ": " << str << "\n";
 			}
 			else {
@@ -168,26 +176,26 @@ tuple< multimap<int,int>, vector<cmdtype> > parse(){
 				while ( getline(cin,str) ){
 					current_line ++;
 					cmdtype tmp = parse_command_line(str);
-					if (tmp == cmdtype('E', -1, -1))
+					if ( tmp == cmdtype('E', -1, -1)
+							|| stored_lines > LINES_MAX_NO ) {
 						cerr << "Error " << current_line << ": " << str << "\n";
-					else
+					}
+					else {
 						command_vector.push_back(tmp);
+						stored_lines ++;
+					}
 				}
 				break;
 			}
 		}
-
-		// W zwiazku z zalozeniem, ze czas poczatkowy zapytania <= czas koncowy,
-		// zauwazamy, ze jesli opoznienie spowoduje przejazd przez stacje kolejnego dnia
-		// (tzn o lub po godzini 0:00, przy czym planowany przejazd byl przed),
-		// to nigdy nie pojawi sie zapytanie o taki pociag
-		else if ( get<0>( tmptrain ) < DOBA ) {
+		else {
 			train_map.insert(tmptrain);
+			stored_lines ++;
 		}
 		current_line ++;
 	}
 
-	return make_tuple(train_map, command_vector);
+	return make_tuple( train_map, command_vector);
 }
 
 int main(){
