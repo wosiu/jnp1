@@ -25,10 +25,7 @@ const unsigned int LINES_MAX_NO = 3e7;
 const int DOBA = 60*24;
 const traintype BADTRAIN = traintype(-1,-1);
 const cmdtype BADCMD = cmdtype('E',-1,-1);
-
-//const int MAX_DELEY =
-//TODO: podac ograniczenie na maksymalne opoznienie (sizeof int - DOBA w min)
-
+const int MAX_DELEY = 2e9;
 /*
  *	Kody bledow:
  *
@@ -115,11 +112,11 @@ traintype parse_line(string line){
 	if (!ss.eof()) {
 		if (ss >> traindelay) {
 			delay = strToInt( traindelay );
-			if (delay < 0) { return BADTRAIN; }
+			if ( delay < 0 || delay > MAX_DELEY ) { return BADTRAIN; }
 		}
 	}
 	if (!ss.eof()) {
-		if (ss >> traindelay ) //zwraca true jesli napotkal gdzies nie biale znaki
+		if ( ss >> traindelay ) //zwraca true jesli napotkal gdzies nie biale znaki
 			return BADTRAIN;
 	}
 
@@ -180,6 +177,7 @@ void execute( multimap<int,int> * trains, multimap<int,int> * trains_per_time,
 		case 'M' :
 			train_it = trains->lower_bound( start );
 			end_it = trains->upper_bound( end );
+
 			for ( ; train_it != end_it; train_it++ ) {
 				res = max( res, (unsigned long long)(*train_it).second );
 			}
