@@ -22,10 +22,10 @@ typedef pair<int,int> traintype;
 typedef tuple<char,int,int> cmdtype;
 const bool DEBUG_MODE = false;
 const unsigned int LINES_MAX_NO = 3e7;
-const int DOBA = 60*24;
+const int DAY = 60*24;
 const traintype BADTRAIN = traintype(-1,-1);
 const cmdtype BADCMD = cmdtype('E',-1,-1);
-const int MAX_DELEY = 2e9;
+
 /*
  *	Kody bledow:
  *
@@ -112,7 +112,8 @@ traintype parse_line(string line){
 	if (!ss.eof()) {
 		if (ss >> traindelay) {
 			delay = strToInt( traindelay );
-			if ( delay < 0 || delay > MAX_DELEY ) { return BADTRAIN; }
+			if ( delay < 0 ) { return BADTRAIN; }
+			delay %= DAY;
 		}
 	}
 	if (!ss.eof()) {
@@ -120,7 +121,7 @@ traintype parse_line(string line){
 			return BADTRAIN;
 	}
 
-	return traintype( (time + delay) % DOBA, delay);
+	return traintype( (time + delay) % DAY, delay );
 }
 
 cmdtype parse_command_line(string line){
