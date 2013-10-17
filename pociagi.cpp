@@ -1,7 +1,7 @@
 /*
 * JNP1 zad 1
 * Andrzej Sułecki (as320426), Michał Woś (mw336071)
-* grupa nr (TODO)
+* grupa nr 7
 * g++ -std=c++11 -lboost_date_time -lboost_regex
 */
 #include <iostream>
@@ -21,8 +21,11 @@ using namespace std;
 typedef pair<int,int> traintype;
 typedef tuple<char,int,int> cmdtype;
 const bool DEBUG_MODE = false;
-const int LINES_MAX_NO = 3e7;
+const unsigned int LINES_MAX_NO = 3e7;
 const int DOBA = 60*24;
+const traintype BADTRAIN = traintype(-1,-1);
+const cmdtype BADCMD = cmdtype('E',-1,-1);
+
 //const int MAX_DELEY =
 //TODO: podac ograniczenie na maksymalne opoznienie (sizeof int - DOBA w min)
 
@@ -88,36 +91,36 @@ traintype parse_line(string line){
 	string trainnumber, traindate, traintime, traindelay = "0";
 
 	// numer pociagu
-	if (ss.eof()) { return traintype(-1, -1); }
+	if (ss.eof()) { return BADTRAIN; }
 	ss >> trainnumber;
 	// jesli numer pociagu nie jest 'kilkucyfrowy'
 	if ( 3 > trainnumber.size() || trainnumber.size() > 9 ) {
-		return traintype(-1, -1);
+		return BADTRAIN;
 	}
 
 	// jesli problem ze sparsowaniem (-1) lub numer pociagu ujemnyy
-	if ( strToInt(trainnumber) < 0 ) { return traintype(-1, -1); }
+	if ( strToInt(trainnumber) < 0 ) { return BADTRAIN; }
 	// data
-	if (ss.eof()) { return traintype(-1, -1); }
+	if (ss.eof()) { return BADTRAIN; }
 	ss >> traindate;
-	if ( !checkDate(traindate) ) { return traintype(-1, -1); }
+	if ( !checkDate(traindate) ) { return BADTRAIN; }
 
 	// planowany czas przejazdu
-	if (ss.eof()) { return traintype(-1, -1); }
+	if (ss.eof()) { return BADTRAIN; }
 	ss >> traintime;
 	int time = getTime(traintime);
-	if (time == -1) { return traintype(-1, -1); }
+	if (time == -1) { return BADTRAIN; }
 	// opoznienie - opcjonalne
 	int delay = 0;
 	if (!ss.eof()) {
 		if (ss >> traindelay) {
 			delay = strToInt( traindelay );
-			if (delay < 0) { return traintype(-1, -1); }
+			if (delay < 0) { return BADTRAIN; }
 		}
 	}
 	if (!ss.eof()) {
 		if (ss >> traindelay ) //zwraca true jesli napotkal gdzies nie biale znaki
-			return traintype(-1, -1);
+			return BADTRAIN;
 	}
 
 	return traintype( (time + delay) % DOBA, delay);
@@ -132,33 +135,35 @@ cmdtype parse_command_line(string line){
 	ss << line;
 	ss >> cmd;
 
-	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S'))) { return cmdtype('E', -1, -1); }
+	if (!(((cmd == 'L') || (cmd == 'M')) || (cmd == 'S'))) { return BADCMD; }
 
 	string str;
-	if (ss.eof()) { return cmdtype('E', -1, -1); }
+	if (ss.eof()) { return BADCMD; }
 	ss >> str;
 	timestart = getTime(str);
-	if (timestart == -1) { return cmdtype('E', -1, -1); }
-	if (ss.eof()) { return cmdtype('E', -1, -1); }
+	if (timestart == -1) { return BADCMD; }
+	if (ss.eof()) { return BADCMD; }
 	string str2;
 	ss >> str2;
 	timeend = getTime(str2);
-	if (timeend == -1) { return cmdtype('E', -1, -1); }
-	if (timeend < timestart) { return cmdtype('E', -1, -1); }
+	if (timeend == -1) { return BADCMD; }
+	if (timeend < timestart) { return BADCMD; }
 	if (!ss.eof()) {
 		if (ss >> str2) //zwraca true jesli napotkal gdzies nie biale znaki
-			return cmdtype('E', -1, -1);
+			return BADCMD;
 	}
 	return make_tuple(cmd, timestart, timeend);
 }
 
-void execute(multimap<int,int> * trains, multimap<int,int> * trains_per_time, cmdtype cmd){
-	char code = get<0>(cmd);
-	int start = get<1>(cmd);
-	int end = get<2>(cmd);
+void execute( multimap<int,int> * trains, multimap<int,int> * trains_per_time,
+			cmdtype cmd ){
+
+	char code = get<0>( cmd );
+	int start = get<1>( cmd );
+	int end = get<2>( cmd );
 	unsigned long long res = 0;
 	multimap<int,int>::iterator train_it,end_it;
-	if ( DEBUG_MODE ) cout << "kod: " << code << ", start: " << start << ", end: " << end << endl;
+
 	switch(code) {
 		case 'L' :
 			train_it = trains_per_time->lower_bound( start );
@@ -188,68 +193,78 @@ void execute(multimap<int,int> * trains, multimap<int,int> * trains_per_time, cm
 			break;
 	}
 	printf("%llu\n", res);
-
-
 }
 
+int main() {
 
-tuple< multimap<int,int>, vector<cmdtype> > parse(){
 	string str;
-	//pociagi - (key: czas oczekiwany + opoznienie) # (value: opoznienie)
+	// pociagi - (key: czas oczekiwany + opoznienie) # (value: opoznienie)
 	multimap <int,int> train_map;
-	//polecenia - (znak polecenia, czas [min] od, czas [min] do)
-	vector <cmdtype> command_vector;
-	multimap <int, int> trains_per_time;
-	int current_line = 1, stored_lines = 0;
-	bool readtrain = true; //czy czytamy nadal pociagi
+	multimap <int,int> trains_per_time;
+	int current_line = 0;
+	bool notEOF;
+	cmdtype tmpcmd;
+	traintype tmptrain;
 
-	while ( getline(cin,str) ){
+	// wczytujemy pociagi
+	while ( ( notEOF = getline(cin,str) ) ) {
+		current_line ++;
 
-		if (readtrain){
-			traintype tmptrain = parse_line(str);
+		// przekroczylismy limit spamietanych pociagow
+		if ( train_map.size() > LINES_MAX_NO ) {
+			cerr << "Error " << current_line << ": " << str << "\n";
+			continue;
+		}
 
-			if ( DEBUG_MODE ) { cout << tmptrain.first << endl; }
+		tmptrain = parse_line( str );
 
-			if (tmptrain == traintype(-1, -1)){
-				cmdtype tmpcmd = parse_command_line(str);
-				if (tmpcmd == cmdtype('E', -1, -1) || stored_lines > LINES_MAX_NO ){
-					cerr << "Error " << current_line << ": " << str << "\n";
-				}
-				else {
-					int count = 1;
+		// wczytana linia jest poprawnym pociagiem
+		if ( tmptrain != BADTRAIN ) {
+			train_map.insert(tmptrain);
+			continue;
+		}
 
-					for ( traintype train : train_map ) {
-						if ( DEBUG_MODE ) cout << "przyjazd: " << train.first << ", opoznienie: " << train.second << ", count: " <<  count << endl;
-						trains_per_time.insert( traintype( train.first, count++ ) );
-					}	
-					execute(&train_map, &trains_per_time, tmpcmd);
-					readtrain = false;
-									}
+		tmpcmd = parse_command_line( str );
+
+		// wczytana linia jest poprawnym poleceniem
+		if ( tmpcmd != BADCMD ) {
+			// inicjacja elementow potrzebnych do wykonywania polecen
+			int count = 1;
+
+			for ( traintype train : train_map ) {
+				trains_per_time.insert( traintype( train.first, count++ ) );
 			}
-			else {
-				train_map.insert(tmptrain);
-				stored_lines ++;
-			}
-			current_line ++;
+
+			// wywolujemy dla pierwszego polecenia
+			execute( &train_map, &trains_per_time, tmpcmd );
+
+			// przerywamy wczytywanie pociagow
+			break;
+		}
+
+		// wczytywana linia nie jest ani poprawnym pociagiem ani poleceniem
+		cerr << "Error " << current_line << ": " << str << "\n";
+	}
+
+	// ostatnio wczytano koniec pliku
+	if ( !notEOF ) {
+		return 0;
+	}
+
+	// wczytujemy pozostale polecenia
+	while ( getline(cin,str) ) {
+
+		current_line++;
+		tmpcmd = parse_command_line(str);
+
+		// polecenie jest poprawne
+		if ( tmpcmd != BADCMD ){
+			execute(&train_map, &trains_per_time, tmpcmd);
 		}
 		else {
-			cmdtype tmp = parse_command_line(str);
-			if ( tmp == cmdtype('E', -1, -1)
-					|| stored_lines > LINES_MAX_NO ) {
-				cerr << "Error " << current_line << ": " << str << "\n";
-			}
-			else {
-				execute(&train_map, &trains_per_time, tmp);
-				stored_lines ++;
-			}
-			current_line ++;
+			cerr << "Error " << current_line << ": " << str << "\n";
 		}
 	}
 
-	return make_tuple( train_map, command_vector);
-}
-
-
-int main(){
-	tuple <multimap<int,int>, vector<cmdtype>> input = parse();
+	return 0;
 }
