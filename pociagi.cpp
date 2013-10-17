@@ -20,27 +20,11 @@
 using namespace std;
 typedef tuple<int,int,int> traintype;
 typedef tuple<char,int,int> cmdtype;
-const bool DEBUG_MODE = false;
 const unsigned int LINES_MAX_NO = 3e7;
 const int DAY = 60*24;
 const traintype BADTRAIN = traintype(-1,-1,-1);
 const cmdtype BADCMD = cmdtype('E',-1,-1);
 const int INF = (1 << 30) - 1;
-
-/*
- *	Kody bledow:
- *
- *	1 - EOF
- *	2 - NaN
- *	30 - Zly czas
- *	40 - Zla data
- *	41 - ujemny delay
- *	50 - zle polecenie
- *	51 - zle polecenie - czas startu po czasie konca
- *	52 - brak czasu startu/konca
- *	100 - TODO ?
- *
- */
 
 int strToInt(string str){
 	try {
@@ -62,7 +46,6 @@ bool checkDate(string str) {
 	string formated = parts[2] + "/" + parts[1] + "/" + parts[0];
 
 	try {
-		//boost::gregorian::date d( boost::gregorian::from_string( formated ) );
 		boost::gregorian::from_string( formated );
 	} catch(...) {
 		return false;
@@ -70,7 +53,7 @@ bool checkDate(string str) {
 	return true;
 }
 
-// returns time from 00:00 to 'time' in minutes
+// zwraca czas od 00:00 w minutach
 int getTime(string time){
 	static const boost::regex time_ex("^([0-9]|0[0-9]|1[0-9]|2[0-3])\\.[0-5][0-9]$");
 	if( !boost::regex_match(time, time_ex) ) {
@@ -164,15 +147,6 @@ void execute( vector<traintype> * trains, cmdtype cmd ){
 
 	train_it = lower_bound( (*trains).begin(), (*trains).end(), start );
 	end_it = upper_bound( (*trains).begin(), (*trains).end(), end );
-
-	// jesli faktyczny czas przyjazdu pociagu upper_bound pokrywa sie
-
-	if (DEBUG_MODE) {
-		cout << "____________\n";
-		cout << code << " " << get<1>(cmd) << " " << get<2>(cmd) << endl;
-		cout << get<0>(*train_it) << " " << get<1>(*train_it) << " " << get<2>(*train_it) << endl;
-		cout << get<0>(*end_it) << " " << get<1>(*end_it) << " " << get<2>(*end_it) << endl;
-	}
 
 	switch(code) {
 		case 'L' :
