@@ -22,6 +22,7 @@ typedef pair<int,int> traintype;
 typedef tuple<char,int,int> cmdtype;
 const bool DEBUG_MODE = false;
 const int LINES_MAX_NO = 3e7;
+const int DOBA = 60*24;
 //const int MAX_DELEY =
 //TODO: podac ograniczenie na maksymalne opoznienie (sizeof int - DOBA w min)
 
@@ -94,7 +95,8 @@ traintype parse_line(string line){
 		return traintype(-1, -1);
 	}
 
-	if (strToInt(trainnumber) == -1) { return traintype(-1, -1); }
+	// jesli problem ze sparsowaniem (-1) lub numer pociagu ujemnyy
+	if ( strToInt(trainnumber) < 0 ) { return traintype(-1, -1); }
 	// data
 	if (ss.eof()) { return traintype(-1, -1); }
 	ss >> traindate;
@@ -118,7 +120,7 @@ traintype parse_line(string line){
 			return traintype(-1, -1);
 	}
 
-	return traintype(time + delay, delay);
+	return traintype( (time + delay) % DOBA, delay);
 }
 
 cmdtype parse_command_line(string line){
@@ -209,7 +211,9 @@ int main(){
 
 	// zliczenie ilosci pociagow do danego czasu (potrzebne do polecenia 'L')
 	int count = 1;
+
 	for ( traintype train : trains ) {
+		if ( DEBUG_MODE ) cout << "przyjazd: " << train.first << ", opoznienie: " << train.second << ", count: " <<  count << endl;
 		trains_per_time.insert( traintype( train.first, count++ ) );
 	}
 
@@ -220,7 +224,7 @@ int main(){
 		int end = get<2>(cmd);
 		unsigned long long res = 0;
 
-		if ( DEBUG_MODE ) cout << code << " " << start << " " << end << endl;
+		if ( DEBUG_MODE ) cout << "kod: " << code << ", start: " << start << ", end: " << end << endl;
 
 		switch(code) {
 			case 'L' :
