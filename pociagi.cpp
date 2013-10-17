@@ -18,13 +18,14 @@
 #include <boost/regex.hpp>
 
 using namespace std;
-typedef pair<int,int> traintype;
+typedef tuple<int,int,int> traintype;
 typedef tuple<char,int,int> cmdtype;
 const bool DEBUG_MODE = false;
 const unsigned int LINES_MAX_NO = 3e7;
 const int DAY = 60*24;
-const traintype BADTRAIN = traintype(-1,-1);
+const traintype BADTRAIN = traintype(-1,-1,-1);
 const cmdtype BADCMD = cmdtype('E',-1,-1);
+const int INF = (1 << 30) - 1;
 
 /*
  *	Kody bledow:
@@ -121,7 +122,7 @@ traintype parse_line(string line){
 			return BADTRAIN;
 	}
 
-	return traintype( (time + delay) % DAY, delay );
+	return traintype( (time + delay) % DAY, delay, -1 );
 }
 
 cmdtype parse_command_line(string line){
@@ -153,41 +154,45 @@ cmdtype parse_command_line(string line){
 	return make_tuple(cmd, timestart, timeend);
 }
 
-void execute( multimap<int,int> * trains, multimap<int,int> * trains_per_time,
-			cmdtype cmd ){
+void execute( vector<traintype> * trains, cmdtype cmd ){
 
 	char code = get<0>( cmd );
-	int start = get<1>( cmd );
-	int end = get<2>( cmd );
+	traintype start = traintype( get<1>( cmd ), -1, -1 );
+	traintype end = traintype( get<2>( cmd ), INF, INF );
 	unsigned long long res = 0;
-	multimap<int,int>::iterator train_it,end_it;
+	vector<traintype>::iterator train_it,end_it;
+
+	train_it = lower_bound( (*trains).begin(), (*trains).end(), start );
+	end_it = upper_bound( (*trains).begin(), (*trains).end(), end );
+
+	// jesli faktyczny czas przyjazdu pociagu upper_bound pokrywa sie
+
+	if (DEBUG_MODE) {
+		cout << "____________\n";
+		cout << code << " " << get<1>(cmd) << " " << get<2>(cmd) << endl;
+		cout << get<0>(*train_it) << " " << get<1>(*train_it) << " " << get<2>(*train_it) << endl;
+		cout << get<0>(*end_it) << " " << get<1>(*end_it) << " " << get<2>(*end_it) << endl;
+	}
 
 	switch(code) {
 		case 'L' :
-			train_it = trains_per_time->lower_bound( start );
-			if ( train_it == trains_per_time->end() ) {
+			if ( train_it == trains->end() ) {
 				break;
 			}
-			end_it = trains_per_time->upper_bound( end );
-			if ( end_it == trains_per_time->end() ) {
+			if ( end_it == trains->end() ) {
 				end_it--;
 				res = 1ULL;
 			}
-			res += (*end_it).second - (*train_it).second;
+			res += get<2>(*end_it) - get<2>(*train_it);
 			break;
 		case 'M' :
-			train_it = trains->lower_bound( start );
-			end_it = trains->upper_bound( end );
-
 			for ( ; train_it != end_it; train_it++ ) {
-				res = max( res, (unsigned long long)(*train_it).second );
+				res = max( res, (unsigned long long)get<1>(*train_it) );
 			}
 			break;
 		case 'S' :
-			train_it = trains->lower_bound( start );
-			end_it = trains->upper_bound( end );
 			for ( ; train_it != end_it; train_it++ ) {
-				res += (*train_it).second;
+				res += get<1>(*train_it);
 			}
 			break;
 	}
@@ -198,8 +203,7 @@ int main() {
 
 	string str;
 	// pociagi - (key: czas oczekiwany + opoznienie) # (value: opoznienie)
-	multimap <int,int> train_map;
-	multimap <int,int> trains_per_time;
+	vector < traintype > trains;
 	int current_line = 0;
 	bool notEOF;
 	cmdtype tmpcmd;
@@ -210,7 +214,7 @@ int main() {
 		current_line ++;
 
 		// przekroczylismy limit spamietanych pociagow
-		if ( train_map.size() > LINES_MAX_NO ) {
+		if ( trains.size() > LINES_MAX_NO ) {
 			cerr << "Error " << current_line << ": " << str << "\n";
 			continue;
 		}
@@ -219,7 +223,7 @@ int main() {
 
 		// wczytana linia jest poprawnym pociagiem
 		if ( tmptrain != BADTRAIN ) {
-			train_map.insert(tmptrain);
+			trains.push_back(tmptrain);
 			continue;
 		}
 
@@ -230,12 +234,16 @@ int main() {
 			// inicjacja elementow potrzebnych do wykonywania polecen
 			int count = 1;
 
-			for ( traintype train : train_map ) {
-				trains_per_time.insert( traintype( train.first, count++ ) );
+			// sortujemy po faktycznym czasie przejazdu
+			sort ( trains.begin(), trains.end() );
+			// dodajemy indeks mowiący ile pociagow przejechalo przed danym
+			// pociagiem wlacznie
+			for ( unsigned int i = 0; i < trains.size(); i++ ) {
+				get<2>(trains[i]) = count++;
 			}
 
 			// wywolujemy dla pierwszego polecenia
-			execute( &train_map, &trains_per_time, tmpcmd );
+			execute( &trains, tmpcmd );
 
 			// przerywamy wczytywanie pociagow
 			break;
@@ -258,7 +266,7 @@ int main() {
 
 		// polecenie jest poprawne
 		if ( tmpcmd != BADCMD ){
-			execute(&train_map, &trains_per_time, tmpcmd);
+			execute(&trains, tmpcmd);
 		}
 		else {
 			cerr << "Error " << current_line << ": " << str << "\n";
